@@ -43,13 +43,17 @@ def planner_node(state: TravelState):
     TẬP DỮ LIỆU (Context):
     {json.dumps(research_context, ensure_ascii=False)}
     
+    Yêu cầu MỚI NHẤT của người dùng: "{user_input}"
+    
     LỊCH TRÌNH VÀ KHÁCH SẠN CŨ (Dùng để tham khảo khi có yêu cầu Refine):
     Khách sạn cũ: {json.dumps(old_hotel, ensure_ascii=False)}
     Lịch trình cũ: {json.dumps(old_itinerary, ensure_ascii=False)}
     
     LUẬT QUAN TRỌNG VỀ SỐ NGÀY:
-    - Nếu người dùng yêu cầu "thêm ngày", "bớt ngày", "đi N ngày", bạn PHẢI tự động điều chỉnh số lượng mảng `days` cho đúng, đồng thời điều chỉnh số `nights` (đêm) của khách sạn tương ứng (thường số đêm = số ngày - 1, hoặc tùy ngữ cảnh).
-    - Nếu người dùng không đề cập đến việc đổi ngày, giữ nguyên số ngày và số đêm như lịch trình cũ.
+    - Hãy tập trung vào Yêu cầu MỚI NHẤT ("{user_input}"). 
+    - Lịch trình cũ đang có {current_days} ngày. Nếu yêu cầu mới nhất là "thêm 1 ngày", BẮT BUỘC bạn phải trả về lịch trình mới gồm {current_days + 1} ngày! Nếu yêu cầu là "bớt 1 ngày", BẮT BUỘC trả về {max(1, current_days - 1)} ngày.
+    - Nếu yêu cầu mới nhất chỉ là đổi khách sạn hoặc quán ăn mà không nhắc gì đến việc thay đổi số ngày, BẮT BUỘC giữ nguyên {current_days} ngày như lịch trình cũ.
+    - Tuyệt đối không để số ngày bị mắc kẹt. Phải đảm bảo mảng `days` bạn trả ra có độ dài khớp với phép toán trên.
     
     LUẬT QUAN TRỌNG VỀ REFINE:
     1. Nếu intent là 'refine_hotel': BẠN PHẢI GIỮ NGUYÊN 100% phần `itinerary` (lịch trình) cũ, CHỈ chọn lại `hotel` mới từ Context. (Nếu có thay đổi số ngày thì cập nhật lại `nights` cho hotel).

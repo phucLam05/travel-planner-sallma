@@ -1,13 +1,13 @@
-# Kiến trúc Hệ thống (Operational Layer)
+# Kiến trúc Hệ thống SALLMA V2 (Operational Layer)
 
-* *Shared Memory (Data for Memory for Persistence)*: Được định nghĩa bằng TypedDict của LangGraph (TravelState). Lưu trữ toàn bộ ngữ cảnh bao gồm yêu cầu người dùng, ngày đi, lịch trình tạm thời, thông tin khách sạn và tổng chi phí.
+SALLMA (State-Aware Large Language Model Architecture) là kiến trúc xoay quanh một bộ nhớ dùng chung duy nhất để giữ tính nhất quán tuyệt đối giữa các tiến trình suy luận.
 
-* *Intent/Workflow Management Agent*: Agent cổng vào, chịu trách nhiệm đọc tin nhắn của người dùng và xác định mục đích là tạo mới lịch trình (create) hay chỉnh sửa lịch trình hiện tại (refine).  
+* *Shared Memory (Data for Memory for Persistence)*: Được định nghĩa bằng `TravelState` của LangGraph. Đây là "Bộ não" trung tâm lưu trữ toàn bộ lịch sử hội thoại (`chat_history`), danh sách địa điểm thu thập được, lịch trình đang có, và tổng chi phí. Các Agent không giao tiếp chéo với nhau mà chỉ tương tác qua State này.
 
-* *Itinerary Agent (Specialized Agent 1)*: Chuyên trách lập lịch trình điểm đến. Bắt buộc không được ảo giác (hallucination) mà phải gọi công cụ RAG để truy xuất địa điểm có thật từ cơ sở dữ liệu.
+* *Workflow Agent (Intent Router)*: Agent cổng vào. Đọc toàn bộ `chat_history` và câu lệnh mới nhất để xác định ý định của người dùng (`create`, `refine_hotel`, `refine_activities`, `refine_all`). Nó không can thiệp sâu vào dữ liệu mà chỉ định hướng luồng.
 
-* *Accommodation Agent (Specialized Agent 2)*: Chuyên trách tìm khách sạn dựa trên điểm đến và số ngày lưu trú. Bắt buộc gọi công cụ RAG để lấy giá phòng thật và gọi Tool tính toán chi phí.
+* *Research Agent (RAG/Retrieval Agent)*: Agent "Thủ thư". Không tự tạo lịch trình, nhiệm vụ duy nhất là gọi Tool `retrieve_places` (Hybrid Search với PostgreSQL `pgvector`) để gom dữ liệu (Khách sạn, Điểm tham quan, Nhà hàng) bỏ vào "Giỏ hàng" (Context) trong State.
 
-* *Place Retrieval Tool (RAG Tool)*: Công cụ dùng để kéo dữ liệu từ cơ sở dữ liệu.
+* *Planner Agent (Specialized Planner)*: Agent "Kiến trúc sư". Đọc toàn bộ `chat_history`, Giỏ hàng, và Lịch trình cũ. Nó tự động cân đối số ngày/đêm, gắp các địa điểm từ Giỏ hàng để xếp thành lịch trình và đường đi tối ưu. Nó tuyệt đối không gọi Tool tìm kiếm nào nữa, để tránh ảo giác.
 
-* *Budgeting Tool (Non-LLM Tool)*: Công cụ tính toán chi phí bằng thuật toán toán học truyền thống, đảm bảo độ chính xác tuyệt đối.
+* *Budgeting Node (Non-LLM)*: Một hàm Python thuần túy, duyệt qua mảng JSON do Planner tạo ra để cộng dồn chi phí chính xác từng đồng, không phụ thuộc vào dự đoán của LLM.

@@ -3,24 +3,23 @@ from langchain_core.tools import tool
 from core.database import DatabaseManager
 
 @tool
-def retrieve_places(category: str, keyword: str = "") -> str:
+def retrieve_places(category: str, semantic_query: str, limit: int = 5) -> str:
     """
-    Truy xuất danh sách các địa điểm từ cơ sở dữ liệu.
+    Truy xuất danh sách các địa điểm từ cơ sở dữ liệu bằng Hybrid Search (Lọc Category + Vector Semantic Search).
     
     Args:
-        category (str): Phân loại địa điểm cần tìm ('hotel', 'attraction', hoặc 'restaurant').
-        keyword (str, optional): Từ khóa tìm kiếm (ví dụ: 'giá rẻ', 'trung tâm', 'biển'). Mặc định là chuỗi rỗng.
+        category (str): 'hotel', 'attraction', hoặc 'restaurant'.
+        semantic_query (str): Câu truy vấn tự nhiên mô tả nhu cầu (VD: 'khách sạn gần biển', 'quán ăn lãng mạn', 'cảnh đẹp thiên nhiên').
+        limit (int): Số lượng kết quả trả về.
         
     Returns:
-        str: Chuỗi JSON chứa danh sách các địa điểm tìm được, gồm tên, mô tả, giá và đánh giá (nếu có).
+        str: JSON danh sách địa điểm (kèm tọa độ).
     """
-    # Gọi DatabaseManager để tìm kiếm
-    results = DatabaseManager.search_places(category=category, keyword=keyword)
+    results = DatabaseManager.hybrid_search(category=category, query=semantic_query, limit=limit)
     
     if not results:
-        return f"Không tìm thấy địa điểm nào phù hợp với danh mục '{category}' và từ khóa '{keyword}'."
+        return f"Không tìm thấy dữ liệu cho query '{semantic_query}'."
         
-    # Trả về kết quả dưới dạng JSON string để LLM dễ xử lý
     return json.dumps(results, ensure_ascii=False, indent=2)
 
 

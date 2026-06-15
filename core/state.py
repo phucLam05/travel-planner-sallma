@@ -12,17 +12,17 @@ class TravelState(TypedDict):
     # Câu hỏi/yêu cầu mới nhất từ người dùng
     latest_user_input: str
     
-    # Mục đích của người dùng: 'create' (tạo mới lịch trình) hoặc 'refine' (chỉnh sửa lịch trình)
+    # Mục đích của người dùng: 'create', 'refine_activities', 'refine_hotel', 'refine_all'
     intent: str
     
-    # Các ngày đi du lịch, ví dụ: "3 ngày 2 đêm" hoặc "từ ngày 10 đến ngày 12"
-    travel_dates: str
+    # Kết quả tìm kiếm từ Research Agent (Giỏ hàng/Danh sách ứng viên)
+    research_context: dict
     
-    # Lịch trình chi tiết (được Itinerary Agent tạo ra)
-    itinerary_plan: str
+    # Lịch trình chi tiết (được Planner Agent tạo ra, dạng JSON dict)
+    itinerary_plan: dict
     
-    # Chi tiết về khách sạn/chỗ ở (được Accommodation Agent tạo ra)
-    accommodation_details: str
+    # Chi tiết về khách sạn/chỗ ở (được Planner Agent tạo ra, dạng JSON dict)
+    accommodation_details: dict
     
-    # Tổng chi phí chuyến đi (tính bằng Tool)
-    total_cost: float
+    # Tổng chi phí chuyến đi (được Budget Node tính toán)
+    budget_details: dict

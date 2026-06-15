@@ -1,27 +1,23 @@
 from langgraph.graph import StateGraph, START, END
 from core.state import TravelState
 from agents.workflow_agent import workflow_node
-from agents.itinerary_agent import itinerary_node
-from agents.accommodation_agent import accommodation_node
+from agents.research_agent import research_node
+from agents.planner_agent import planner_node
+from agents.budget_node import budget_node
 from core.logger import get_logger
 
 logger = get_logger("Graph")
 
 def route_intent(state: TravelState):
     """
-    Hàm định tuyến (Conditional Edge) để quyết định bước tiếp theo dựa trên intent.
+    Định tuyến sau Workflow Agent.
+    Nếu tạo mới hoặc thay đổi lớn -> Research lại.
+    Nếu chỉ refine nhỏ (với context đã có đủ data) thì có thể chỉ chạy Planner, 
+    nhưng để đơn giản và an toàn nhất cho hybrid search, ta chạy Research -> Planner cho mọi refine 
+    trừ phi bạn muốn tối ưu cực sâu (chưa cần ở Phase này).
+    Tạm thời: Workflow -> Research -> Planner -> Budget.
     """
-    intent = state.get("intent", "create")
-    if intent == "create":
-        logger.info("Routing: Intent là CREATE -> Itinerary Agent")
-        return "itinerary"
-    elif intent == "refine":
-        logger.info("Routing: Intent là REFINE -> Cập nhật lại lịch trình hoặc khách sạn")
-        # Trong MVP này, chúng ta cho chạy lại từ Itinerary để sửa đổi
-        return "itinerary"
-    else:
-        logger.warning("Routing: Không rõ intent, mặc định -> Itinerary Agent")
-        return "itinerary"
+    return "research"
 
 def build_graph():
     """
@@ -32,20 +28,21 @@ def build_graph():
 
     # Đăng ký các Node (các Agent)
     builder.add_node("workflow", workflow_node)
-    builder.add_node("itinerary", itinerary_node)
-    builder.add_node("accommodation", accommodation_node)
+    builder.add_node("research", research_node)
+    builder.add_node("planner", planner_node)
+    builder.add_node("budget", budget_node)
 
     # Đăng ký các Edge (luồng chuyển)
     builder.add_edge(START, "workflow")
     
-    # Định tuyến có điều kiện từ Workflow -> Itinerary hoặc luồng khác
+    # Từ workflow đi đâu?
     builder.add_conditional_edges("workflow", route_intent, {
-        "itinerary": "itinerary"
+        "research": "research"
     })
     
-    # Tiếp tục luồng tuyến tính: Itinerary -> Accommodation -> END
-    builder.add_edge("itinerary", "accommodation")
-    builder.add_edge("accommodation", END)
+    builder.add_edge("research", "planner")
+    builder.add_edge("planner", "budget")
+    builder.add_edge("budget", END)
 
     # Biên dịch đồ thị
     graph = builder.compile()

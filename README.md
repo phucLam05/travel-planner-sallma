@@ -10,7 +10,13 @@ Dự án lên kế hoạch du lịch sử dụng kiến trúc **SALLMA (State-Aw
   - **Research Agent**: RAG Agent chuyên kết nối với PostgreSQL `pgvector` để truy xuất địa điểm có thật (Hybrid Search). Hỗ trợ tìm kiếm thông minh bổ sung khi Refine.
   - **Planner Agent**: Agent lập kế hoạch thông minh, tự động tính toán số ngày lưu trú, điều chỉnh lịch trình, bắt buộc phải chọn đủ 3 bữa ăn/ngày, và không ảo giác.
   - **Budget Node**: Node toán học (Non-LLM) tính tổng chi phí chính xác tuyệt đối.
-- **Database (PostgreSQL + pgvector)**: Lưu trữ dữ liệu thực và Vector Embeddings (Google `text-embedding-004`).
+- **Database (PostgreSQL + pgvector)**: Lưu trữ dữ liệu thực và Vector Embeddings (Google `gemini-embedding-2`).
+
+## 📊 Multi-Agent vs Single-Agent Baseline
+SALLMA Travel Planner giải quyết triệt để các hạn chế của LLM Agent truyền thống (Single-Agent):
+- **Zero Hallucination (Không ảo giác):** Thay vì LLM tự bịa ra địa điểm, **Research Agent** bắt buộc dùng Hybrid Search RAG từ PostgreSQL để lấy dữ liệu thực tế.
+- **Toán học chính xác tuyệt đối:** **Budget Node** được code bằng Python thuần, thay thế việc bắt LLM tự làm phép tính cộng trừ (LLM thường xuyên cộng sai hóa đơn).
+- **State-Aware Group Room:** Thay vì chat 1-1 và hay quên ngữ cảnh, hệ thống áp dụng cơ chế **Event Sourcing** lưu trữ lịch sử thành các logs theo `room_id`. Nhiều người dùng có thể cùng lập kế hoạch chung trong 1 room mà không bị ghi đè dữ liệu.
 
 ## Cài đặt và Chạy thử nghiệm
 

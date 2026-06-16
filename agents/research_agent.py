@@ -23,36 +23,21 @@ def research_node(state: TravelState):
     
     logger.info(f"User Input: '{user_input}'")
     
+    from core.knowledge_layer import AgentConfigurationCatalog
+    config = AgentConfigurationCatalog.get_config("research_agent")
+
     llm = ChatOpenAI(
-        model="gpt-4o-mini",
-        temperature=0.2,
+        model=config.get("model", "gpt-4o-mini"),
+        temperature=config.get("temperature", 0.2),
         base_url="https://models.inference.ai.azure.com",
         api_key=os.getenv("GITHUB_TOKEN")
     )
     llm_with_tools = llm.bind_tools([retrieve_places])
     
-    system_prompt = f"""
-    Bạn là một Research Agent chuyên thu thập dữ liệu du lịch.
-    Intent hiện tại: {intent}
-    Giỏ hàng (Context) hiện tại: {json.dumps(current_context, ensure_ascii=False)}
-    
-    Nhiệm vụ của bạn là đọc TOÀN BỘ lịch sử hội thoại (đặc biệt là yêu cầu mới nhất) và dùng tool `retrieve_places` để tìm kiếm dữ liệu từ Database.
-    
-    - Nếu intent là 'create' hoặc 'refine_all': Tìm kiếm khoảng 3-5 khách sạn, 5-7 điểm tham quan, 3-5 nhà hàng.
-    - Nếu intent là 'refine_hotel': CHỈ TÌM THÊM khách sạn mới theo yêu cầu. GIỮ NGUYÊN điểm tham quan và nhà hàng từ Giỏ hàng hiện tại.
-    - Nếu intent là 'refine_activities': CHỈ TÌM THÊM điểm tham quan hoặc nhà hàng mới theo yêu cầu. GIỮ NGUYÊN khách sạn từ Giỏ hàng hiện tại.
-    
-    SAU KHI CÓ ĐỦ DỮ LIỆU TỪ CÁC LẦN GỌI TOOL (Hoặc kết hợp với dữ liệu cũ), bạn MỚI tổng hợp lại và TRẢ VỀ ĐÚNG ĐỊNH DẠNG JSON SAU (NẰM TRONG BLOCK ```json ... ```):
-    {{
-        "hotels": [
-            {{"id": "...", "name": "...", "price": ..., "description": "...", "lat": ..., "lng": ...}}
-        ],
-        "attractions": [...],
-        "restaurants": [...]
-    }}
-    
-    Tuyệt đối chỉ trả về JSON, không giải thích. Đảm bảo JSON chứa đầy đủ khách sạn, điểm tham quan, nhà hàng (cả cũ và mới).
-    """
+    system_prompt = config.get("system_prompt", "").format(
+        intent=intent,
+        context_json=json.dumps(current_context, ensure_ascii=False)
+    )
     
     logger.debug(f"System Prompt: {system_prompt}")
     

@@ -27,87 +27,26 @@ def planner_node(state: TravelState):
     # Tính số ngày hiện tại từ lịch trình cũ
     current_days = len(old_itinerary.get("days", [])) if old_itinerary and "days" in old_itinerary else 2
     
+    from core.knowledge_layer import AgentConfigurationCatalog
+    config = AgentConfigurationCatalog.get_config("planner_agent")
+
     llm = ChatOpenAI(
-        model="gpt-4o-mini",
-        temperature=0.1,
+        model=config.get("model", "gpt-4o-mini"),
+        temperature=config.get("temperature", 0.1),
         base_url="https://models.inference.ai.azure.com",
         api_key=os.getenv("GITHUB_TOKEN")
     )
     
-    system_prompt = f"""
-    Bạn là Planner Agent thông minh. Nhiệm vụ của bạn là đọc TOÀN BỘ lịch sử hội thoại để hiểu chính xác người dùng muốn gì, sau đó dựa vào TẬP DỮ LIỆU ĐÃ TÌM KIẾM ĐƯỢC (Context) để xếp lịch trình và chọn khách sạn.
-    
-    Lịch trình cũ đang có: {current_days} ngày.
-    Intent: {intent}
-    
-    TẬP DỮ LIỆU (Context):
-    {json.dumps(research_context, ensure_ascii=False)}
-    
-    Yêu cầu MỚI NHẤT của người dùng: "{user_input}"
-    
-    LỊCH TRÌNH VÀ KHÁCH SẠN CŨ (Dùng để tham khảo khi có yêu cầu Refine):
-    Khách sạn cũ: {json.dumps(old_hotel, ensure_ascii=False)}
-    Lịch trình cũ: {json.dumps(old_itinerary, ensure_ascii=False)}
-    
-    LUẬT QUAN TRỌNG VỀ SỐ NGÀY:
-    - Hãy tập trung vào Yêu cầu MỚI NHẤT ("{user_input}"). 
-    - Lịch trình cũ đang có {current_days} ngày. Nếu yêu cầu mới nhất là "thêm 1 ngày", BẮT BUỘC bạn phải trả về lịch trình mới gồm {current_days + 1} ngày! Nếu yêu cầu là "bớt 1 ngày", BẮT BUỘC trả về {max(1, current_days - 1)} ngày.
-    - Nếu yêu cầu mới nhất chỉ là đổi khách sạn hoặc quán ăn mà không nhắc gì đến việc thay đổi số ngày, BẮT BUỘC giữ nguyên {current_days} ngày như lịch trình cũ.
-    - Tuyệt đối không để số ngày bị mắc kẹt. Phải đảm bảo mảng `days` bạn trả ra có độ dài khớp với phép toán trên.
-    
-    LUẬT QUAN TRỌNG VỀ REFINE VÀ LÊN LỊCH TRÌNH:
-    1. Nếu intent là 'refine_hotel': BẠN PHẢI GIỮ NGUYÊN 100% phần `itinerary` (lịch trình) cũ, CHỈ chọn lại `hotel` mới từ Context. (Nếu có thay đổi số ngày thì cập nhật lại `nights` cho hotel).
-    2. Nếu intent là 'refine_activities': BẠN PHẢI GIỮ NGUYÊN 100% phần `hotel` cũ, CHỈ cập nhật lại `itinerary` (thêm bớt địa điểm, thay đổi ngày) từ Context.
-    3. Nếu intent là 'create' hoặc 'refine_all': Xếp lịch trình và chọn khách sạn hoàn toàn mới. Tối ưu Route: Gom các địa điểm có tọa độ gần nhau vào cùng 1 ngày.
-    4. BẮT BUỘC VỀ CẤU TRÚC MỖI NGÀY:
-       - Mỗi ngày có 4-6 hoạt động, bao gồm các bữa ăn và tham quan.
-       - Mỗi ngày cần có đủ các thành phần theo thứ tự:
-         * Buổi sáng (Morning): 1 bữa ăn sáng (Breakfast) -> 1 điểm tham quan (Attraction).
-         * Buổi trưa (Lunch): 1 bữa ăn trưa (Lunch).
-         * Buổi chiều (Afternoon): 1 điểm tham quan (Attraction) hoặc Quán Cafe/Trải nghiệm địa phương.
-         * Buổi tối (Evening): 1 bữa ăn tối (Dinner) -> Hoạt động về đêm (nếu phù hợp).
-       - Đối với tất cả các bữa ăn (Sáng, Trưa, Tối), BẠN BẮT BUỘC PHẢI CHỌN MỘT NHÀ HÀNG / QUÁN ĂN CỤ THỂ từ Context (không được để chung chung).
-       - Không dùng lại cùng một địa điểm trong nhiều ngày (trừ khách sạn).
-    
-    CHỈ SỬ DỤNG DỮ LIỆU TỪ CONTEXT VÀ DỮ LIỆU CŨ. KHÔNG BỊA ĐỊA ĐIỂM. KHÔNG BỊA NHÀ HÀNG.
-    
-    TRẢ VỀ ĐÚNG ĐỊNH DẠNG JSON SAU (NẰM TRONG BLOCK ```json ... ```):
-    {{
-        "hotel": {{
-            "hotel_name": "Tên khách sạn",
-            "price_per_night": 123,
-            "nights": 2,
-            "description": "Lý do chọn khách sạn này",
-            "lat": 16.0594,
-            "lng": 108.2435
-        }},
-        "itinerary": {{
-            "days": [
-                {{
-                    "day": 1,
-                    "activities": [
-                        {{
-                            "time": "08:00", 
-                            "place": "Tên nhà hàng ăn sáng", 
-                            "description": "Ăn sáng đặc sản", 
-                            "price": 50000,
-                            "lat": 16.123,
-                            "lng": 108.123
-                        }},
-                        {{
-                            "time": "09:30", 
-                            "place": "Tên điểm tham quan", 
-                            "description": "Tham quan ngắm cảnh", 
-                            "price": 100000,
-                            "lat": 16.130,
-                            "lng": 108.140
-                        }}
-                    ]
-                }}
-            ]
-        }}
-    }}
-    """
+    system_prompt = config.get("system_prompt", "").format(
+        current_days=current_days,
+        intent=intent,
+        context_json=json.dumps(research_context, ensure_ascii=False),
+        user_input=user_input,
+        old_hotel_json=json.dumps(old_hotel, ensure_ascii=False),
+        old_itinerary_json=json.dumps(old_itinerary, ensure_ascii=False),
+        next_days=current_days + 1,
+        max_days=max(1, current_days - 1)
+    )
     
     logger.debug(f"System Prompt: {system_prompt}")
     
@@ -124,7 +63,7 @@ def planner_node(state: TravelState):
     
     content = response.content
     if isinstance(content, list):
-        final_text = "".join(
+        result_text = "".join(
             block["text"] if isinstance(block, dict) and "text" in block else (block if isinstance(block, str) else "") 
             for block in content
         )

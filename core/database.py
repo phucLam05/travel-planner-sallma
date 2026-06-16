@@ -64,7 +64,7 @@ class DatabaseManager:
 
     @staticmethod
     def init_session_table():
-        """Tạo bảng travel_sessions nếu chưa có."""
+        """Tạo bảng travel_sessions và travel_room_events nếu chưa có."""
         try:
             conn = DatabaseManager.get_connection()
             cur = conn.cursor()
@@ -75,11 +75,21 @@ class DatabaseManager:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             ''')
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS travel_room_events (
+                    id SERIAL PRIMARY KEY,
+                    room_id VARCHAR(255) NOT NULL,
+                    user_id VARCHAR(255) NOT NULL,
+                    event_type VARCHAR(50) NOT NULL,
+                    payload JSONB NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            ''')
             conn.commit()
             cur.close()
             conn.close()
         except Exception as e:
-            print(f"Lỗi tạo bảng travel_sessions: {e}")
+            print(f"Lỗi tạo bảng sessions/events: {e}")
 
     @staticmethod
     def save_session(session_id: str, state_data: dict):
@@ -130,4 +140,70 @@ class DatabaseManager:
             return [{"session_id": r[0], "updated_at": r[1]} for r in rows]
         except Exception as e:
             print(f"Lỗi get_all_sessions: {e}")
+            return []
+
+    # --- GROUP ROOM EVENT SOURCING METHODS ---
+
+    @staticmethod
+    def append_event(room_id: str, user_id: str, event_type: str, payload: dict):
+        import json
+        try:
+            conn = DatabaseManager.get_connection()
+            cur = conn.cursor()
+            json_str = json.dumps(payload, ensure_ascii=False)
+            
+            cur.execute('''
+                INSERT INTO travel_room_events (room_id, user_id, event_type, payload)
+                VALUES (%s, %s, %s, %s::jsonb);
+            ''', (room_id, user_id, event_type, json_str))
+            
+            conn.commit()
+            cur.close()
+            conn.close()
+        except Exception as e:
+            print(f"Lỗi append_event: {e}")
+
+    @staticmethod
+    def load_room_state(room_id: str) -> dict:
+        """
+        Rebuilds the state of a room by applying all events in chronological order.
+        Last-write-wins policy.
+        """
+        try:
+            conn = DatabaseManager.get_connection()
+            cur = conn.cursor()
+            cur.execute('SELECT payload FROM travel_room_events WHERE room_id = %s ORDER BY id ASC;', (room_id,))
+            rows = cur.fetchall()
+            cur.close()
+            conn.close()
+            
+            state = {}
+            for row in rows:
+                payload = row[0]
+                if isinstance(payload, dict):
+                    # For list-based history, we should properly append if it's a new message
+                    if "chat_history" in payload and "chat_history" in state:
+                        # Append new messages that aren't already in the state's history
+                        new_msgs = payload["chat_history"]
+                        current_msgs = state.get("chat_history", [])
+                        # A simple way is to just overwrite since the app.py passes the full history array
+                        state["chat_history"] = new_msgs
+                    state.update(payload)
+            return state
+        except Exception as e:
+            print(f"Lỗi load_room_state: {e}")
+            return {}
+            
+    @staticmethod
+    def get_all_rooms() -> list:
+        try:
+            conn = DatabaseManager.get_connection()
+            cur = conn.cursor()
+            cur.execute('SELECT DISTINCT room_id, MAX(created_at) as last_activity FROM travel_room_events GROUP BY room_id ORDER BY last_activity DESC;')
+            rows = cur.fetchall()
+            cur.close()
+            conn.close()
+            return [{"room_id": r[0], "last_activity": r[1]} for r in rows]
+        except Exception as e:
+            print(f"Lỗi get_all_rooms: {e}")
             return []

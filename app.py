@@ -24,11 +24,16 @@ def get_travel_graph():
 
 graph = get_travel_graph()
 
-# Xử lý Sidebar cho Session Management
-st.sidebar.title("🗂️ Quản lý Phiên (Sessions)")
+# Xử lý Sidebar cho Group Room Management
+st.sidebar.title("👥 Quản lý Group Room")
 
-if st.sidebar.button("➕ Tạo Chat Mới"):
-    st.session_state.session_id = str(uuid.uuid4())
+if "user_id" not in st.session_state:
+    st.session_state.user_id = f"User_{str(uuid.uuid4())[:4]}"
+
+st.session_state.user_id = st.sidebar.text_input("Tên của bạn (User ID):", value=st.session_state.user_id)
+
+if st.sidebar.button("➕ Tạo Room Mới"):
+    st.session_state.room_id = str(uuid.uuid4())[:8]
     st.session_state.travel_state = TravelState(
         chat_history=[],
         latest_user_input="",
@@ -40,27 +45,26 @@ if st.sidebar.button("➕ Tạo Chat Mới"):
     )
     st.rerun()
 
-sessions = DatabaseManager.get_all_sessions()
+rooms = DatabaseManager.get_all_rooms()
 st.sidebar.markdown("---")
-st.sidebar.subheader("Lịch sử Chat")
-for sess in sessions:
-    # Lấy 8 ký tự đầu của session_id làm tên hiển thị
-    btn_label = f"📝 Session {sess['session_id'][:8]} ({sess['updated_at'].strftime('%H:%M %d/%m')})"
-    if st.sidebar.button(btn_label, key=sess['session_id']):
-        st.session_state.session_id = sess['session_id']
-        loaded_state = DatabaseManager.load_session(sess['session_id'])
+st.sidebar.subheader("Tham gia Room")
+for r in rooms:
+    btn_label = f"🚪 Room {r['room_id']} ({r['last_activity'].strftime('%H:%M %d/%m')})"
+    if st.sidebar.button(btn_label, key=r['room_id']):
+        st.session_state.room_id = r['room_id']
+        loaded_state = DatabaseManager.load_room_state(r['room_id'])
         if loaded_state:
             # Gán lại state
             st.session_state.travel_state = loaded_state
         st.rerun()
 
 # Tiêu đề ứng dụng
-st.title("✈️ SALLMA Travel Planner")
-st.markdown("Hệ thống lên kế hoạch du lịch chuẩn SALLMA với Persistent Memory (PostgreSQL) và Multi-Agent.")
+st.title("✈️ SALLMA Travel Planner (Group Mode)")
+st.markdown(f"Hệ thống lên kế hoạch du lịch chuẩn SALLMA với Event-Sourced Memory. **(Bạn đang ở Room: {st.session_state.get('room_id', 'Chưa có')})**")
 
-# Khởi tạo session_id và state mặc định nếu chưa có
-if "session_id" not in st.session_state:
-    st.session_state.session_id = str(uuid.uuid4())
+# Khởi tạo room_id và state mặc định nếu chưa có
+if "room_id" not in st.session_state:
+    st.session_state.room_id = str(uuid.uuid4())[:8]
 
 if "travel_state" not in st.session_state:
     st.session_state.travel_state = TravelState(
@@ -268,10 +272,12 @@ if submit_button and user_input:
                 "content": f"Đã hoàn thành yêu cầu. Intent: {st.session_state.travel_state.get('intent')}."
             })
             
-            # LƯU STATE VÀO DATABASE ĐỂ PERSISTENCE
-            DatabaseManager.save_session(
-                session_id=st.session_state.session_id,
-                state_data=st.session_state.travel_state
+            # LƯU EVENT VÀO DATABASE ĐỂ PERSISTENCE
+            DatabaseManager.append_event(
+                room_id=st.session_state.room_id,
+                user_id=st.session_state.user_id,
+                event_type="graph_update",
+                payload=st.session_state.travel_state
             )
             
             # Rerun để cập nhật UI

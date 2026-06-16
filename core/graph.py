@@ -10,13 +10,18 @@ logger = get_logger("Graph")
 
 def route_intent(state: TravelState):
     """
-    Định tuyến sau Workflow Agent.
-    Nếu tạo mới hoặc thay đổi lớn -> Research lại.
-    Nếu chỉ refine nhỏ (với context đã có đủ data) thì có thể chỉ chạy Planner, 
-    nhưng để đơn giản và an toàn nhất cho hybrid search, ta chạy Research -> Planner cho mọi refine 
-    trừ phi bạn muốn tối ưu cực sâu.
-    Tạm thời: Workflow -> Research -> Planner -> Budget.
+    Định tuyến thông minh sau Workflow Agent.
     """
+    intent = state.get("intent", "create")
+    
+    # Nếu chỉ muốn đổi khách sạn và đã có đủ data khách sạn trong context -> Bỏ qua Research
+    if intent == "refine_hotel":
+        hotels = state.get("research_context", {}).get("hotels", [])
+        if len(hotels) >= 3:
+            logger.info("Smart Routing: Context đã có đủ Hotel -> Bỏ qua Research, nhảy thẳng tới Planner.")
+            return "planner"
+            
+    # Mặc định cần lấy thêm dữ liệu
     return "research"
 
 def build_graph():
@@ -37,7 +42,8 @@ def build_graph():
     
     # Từ workflow đi đâu?
     builder.add_conditional_edges("workflow", route_intent, {
-        "research": "research"
+        "research": "research",
+        "planner": "planner"
     })
     
     builder.add_edge("research", "planner")

@@ -21,27 +21,19 @@ def workflow_node(state: TravelState):
 
     logger.info(f"User Input: '{user_input}'")
 
+    from core.knowledge_layer import AgentConfigurationCatalog
+    config = AgentConfigurationCatalog.get_config("workflow_agent")
+
     # Cấu hình LLM GPT-4o-mini thông qua GitHub Models
     llm = ChatOpenAI(
-        model="gpt-4o-mini",
-        temperature=0.0,
+        model=config.get("model", "gpt-4o-mini"),
+        temperature=config.get("temperature", 0.0),
         base_url="https://models.inference.ai.azure.com",
         api_key=os.getenv("GITHUB_TOKEN")
     )
     
     # Prompt chặt chẽ để buộc LLM trả về đúng định dạng
-    system_prompt = """
-    Bạn là một trợ lý điều phối quy trình du lịch (Workflow Router).
-    Nhiệm vụ của bạn là đọc TOÀN BỘ lịch sử hội thoại, chú ý đặc biệt vào câu nói cuối cùng của người dùng, sau đó phân loại mục đích và CHỈ TRẢ VỀ DUY NHẤT 1 TỪ KHÓA Intent:
-       - 'create': Người dùng muốn tạo lịch trình mới hoàn toàn (ví dụ: "Lên lịch trình đi...", "Tạo plan đi...").
-       - 'refine_activities': Người dùng muốn thay đổi, tinh chỉnh địa điểm tham quan, quán ăn, lịch trình di chuyển, HOẶC thay đổi số ngày đi (thêm/bớt ngày) so với lịch trình đã có.
-       - 'refine_hotel': Người dùng CHỈ muốn đổi khách sạn, đổi giá phòng, nơi ở.
-       - 'refine_all': Người dùng muốn thay đổi hoàn toàn cả khách sạn và lịch trình cũ.
-       
-       *CHÚ Ý QUAN TRỌNG: Nếu người dùng dùng các từ như "đổi", "sửa", "thay", "thêm", "bớt", CHẮC CHẮN phải là refine.*
-    
-    KHÔNG ĐƯỢC GIẢI THÍCH THÊM. CHỈ TRẢ VỀ 1 TRONG 4 TỪ KHÓA INTENT TRÊN.
-    """
+    system_prompt = config.get("system_prompt", "")
     
     logger.debug(f"System Prompt: {system_prompt}")
     

@@ -8,7 +8,10 @@ from urllib.parse import urlparse
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://postgres:postgres@localhost:5432/travel_db",
+)
 
 # Dữ liệu có thêm tọa độ (vĩ độ, kinh độ)
 MOCK_DATABASE = [

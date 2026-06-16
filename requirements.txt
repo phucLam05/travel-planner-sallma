@@ -2,7 +2,7 @@ langgraph
 langchain-core
 langchain-openai
 langchain-google-genai
-streamlit==1.36.0
+streamlit==1.58.0
 python-dotenv
 psycopg2-binary
 pgvector

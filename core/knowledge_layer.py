@@ -26,7 +26,7 @@ class AgentConfigurationCatalog:
     def get_config(agent_name: str) -> dict:
         configs = {
             "workflow_agent": {
-                "model": "gpt-4o-mini",
+                "model": "gemini-3.1-flash-lite",
                 "temperature": 0.0,
                 "system_prompt": (
                     "Bạn là một trợ lý điều phối quy trình du lịch (Workflow Router).\n"
@@ -40,7 +40,7 @@ class AgentConfigurationCatalog:
                 )
             },
             "research_agent": {
-                "model": "gpt-4o-mini",
+                "model": "gemini-3.1-flash-lite",
                 "temperature": 0.2,
                 "system_prompt": (
                     "Bạn là một Research Agent chuyên thu thập dữ liệu du lịch.\n"
@@ -62,7 +62,7 @@ class AgentConfigurationCatalog:
                 )
             },
             "planner_agent": {
-                "model": "gpt-4o-mini",
+                "model": "gemini-3.1-flash-lite",
                 "temperature": 0.1,
                 "system_prompt": (
                     "Bạn là Planner Agent thông minh. Nhiệm vụ của bạn là đọc TOÀN BỘ lịch sử hội thoại để hiểu chính xác người dùng muốn gì, sau đó dựa vào TẬP DỮ LIỆU ĐÃ TÌM KIẾM ĐƯỢC (Context) để xếp lịch trình và chọn khách sạn.\n\n"

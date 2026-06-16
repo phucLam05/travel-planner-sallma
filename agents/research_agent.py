@@ -1,10 +1,9 @@
 import json
 import re
-import os
-from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from core.state import TravelState
 from core.logger import get_logger
+from core.llm_factory import build_text_llm, invoke_with_retry
 from tools.travel_tools import retrieve_places
 
 logger = get_logger("ResearchAgent")
@@ -26,11 +25,9 @@ def research_node(state: TravelState):
     from core.knowledge_layer import AgentConfigurationCatalog
     config = AgentConfigurationCatalog.get_config("research_agent")
 
-    llm = ChatOpenAI(
-        model=config.get("model", "gpt-4o-mini"),
+    llm = build_text_llm(
+        model=config.get("model"),
         temperature=config.get("temperature", 0.2),
-        base_url="https://models.inference.ai.azure.com",
-        api_key=os.getenv("GITHUB_TOKEN")
     )
     llm_with_tools = llm.bind_tools([retrieve_places])
     
@@ -50,7 +47,7 @@ def research_node(state: TravelState):
             messages.append(AIMessage(content=msg.get("content")))
             
     logger.debug("Gọi LLM để research dữ liệu...")
-    response = llm_with_tools.invoke(messages)
+    response = invoke_with_retry(llm_with_tools, messages)
     
     MAX_ITERATIONS = 5
     iteration_count = 0
@@ -80,11 +77,11 @@ def research_node(state: TravelState):
             logger.warning(f"Research Agent đã đạt giới hạn {MAX_ITERATIONS} vòng lặp. Ép buộc xuất JSON.")
             messages.append(SystemMessage(content="Bạn đã đạt giới hạn số lần tìm kiếm. KHÔNG GỌI THÊM TOOL NÀO NỮA. Dựa trên dữ liệu hiện tại, hãy lập tức trả về kết quả theo định dạng JSON như đã yêu cầu. Nếu thiếu dữ liệu, hãy điền danh sách rỗng [] cho hạng mục đó."))
             # Gọi llm GỐC (không bind tools) để ngăn chặn nó gọi tool tiếp
-            response = llm.invoke(messages)
+            response = invoke_with_retry(llm, messages)
             break
         else:
             # Tiếp tục vòng lặp bình thường
-            response = llm_with_tools.invoke(messages)
+            response = invoke_with_retry(llm_with_tools, messages)
     
     content = response.content
     if isinstance(content, list):

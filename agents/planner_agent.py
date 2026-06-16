@@ -1,10 +1,9 @@
 import json
 import re
-import os
-from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from core.state import TravelState
 from core.logger import get_logger
+from core.llm_factory import build_text_llm, invoke_with_retry
 
 logger = get_logger("PlannerAgent")
 
@@ -30,11 +29,9 @@ def planner_node(state: TravelState):
     from core.knowledge_layer import AgentConfigurationCatalog
     config = AgentConfigurationCatalog.get_config("planner_agent")
 
-    llm = ChatOpenAI(
-        model=config.get("model", "gpt-4o-mini"),
+    llm = build_text_llm(
+        model=config.get("model"),
         temperature=config.get("temperature", 0.1),
-        base_url="https://models.inference.ai.azure.com",
-        api_key=os.getenv("GITHUB_TOKEN")
     )
     
     system_prompt = config.get("system_prompt", "").format(
@@ -59,7 +56,7 @@ def planner_node(state: TravelState):
             messages.append(AIMessage(content=msg.get("content")))
             
     logger.debug("Gọi LLM để lên Plan...")
-    response = llm.invoke(messages)
+    response = invoke_with_retry(llm, messages)
     
     content = response.content
     if isinstance(content, list):

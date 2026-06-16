@@ -1490,7 +1490,7 @@ Ví dụ:
 
 prompt\_version \= format\_plan\_v1.0  
 schema\_version \= itinerary\_schema\_v1  
-model\_name \= gpt-4o-mini
+model\_name \= gemini-3.1-flash-lite
 
 Mỗi lần user chỉnh plan hoặc AI refine plan, hệ thống lưu snapshot vào plan\_versions.
 

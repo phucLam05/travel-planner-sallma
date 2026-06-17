@@ -60,10 +60,15 @@ Thiết lập chạy:
    Benchmark mới chỉ phủ một phần. Giá trị `4.17/5` và `3.79/5` hiện là **proxy tự động**, với raw totals lần lượt là `125.05/30` và `113.59/30`, chưa phải questionnaire Likert thật từ người dùng. Nếu cần đúng tuyệt đối với tiêu chí nghiên cứu, cần bổ sung khảo sát người dùng sau tác vụ.
 
 ### Kết luận ngắn
-- Multi-agent vượt trội rất rõ ở `Correctness`, `Hallucination control` và `Budget accuracy`.
-- Single-agent đang nhanh hơn đáng kể ở `Create` và `Refine`.
-- `State retention` hiện đang ngang nhau theo bộ kiểm tra hiện tại.
-- Metric `Consistency` đang phạt multi-agent khá nặng, vì vậy khi viết báo cáo nên mô tả rõ đây là **rule-based consistency metric**, không phải đánh giá thủ công toàn diện.
+
+Benchmark cho thấy kiến trúc Multi-Agent/SALLMA vượt trội rõ rệt ở các tiêu chí liên quan đến độ tin cậy của nội dung:
+- `Correctness` tăng từ `43.73%` lên `99.39%`.
+- `Hallucination` giảm từ `56.27%` xuống `0.61%`.
+- `Budget accuracy` đạt sai số `0 VND` nhờ Budget Node deterministic.
+
+Tuy nhiên, Multi-Agent đánh đổi bằng độ trễ cao hơn đáng kể trong các workflow có LLM orchestration như `Create` và `Refine`. Ngoài ra, metric `Consistency` hiện tại là rule-based checker và đang phạt Multi-Agent nhiều hơn do hệ sinh ra lịch trình đầy đủ hơn, nhiều địa điểm hơn và nhiều route hơn, từ đó có nhiều điểm kiểm tra hơn.
+
+Vì vậy, kết quả benchmark nên được diễn giải như sau: Multi-Agent phù hợp hơn cho hệ thống cần độ chính xác, chống hallucination và tính toán chi phí đáng tin cậy; Single-Agent phù hợp hơn nếu ưu tiên tốc độ phản hồi và pipeline đơn giản.
 
 ## Cài đặt và Chạy thử nghiệm
 

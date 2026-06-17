@@ -14,9 +14,9 @@ Dự án lên kế hoạch du lịch sử dụng kiến trúc **SALLMA (State-Aw
 
 ## 📊 Benchmark Results
 Kết quả dưới đây được lấy trực tiếp từ full benchmark gần nhất:
-- JSON: [benchmark_full_20260617_063715.json](/home/danielaston/Desktop/Workspace/FPT/SWD392/travel-planner-sallma/benchmarks/results/benchmark_full_20260617_063715.json)
-- Markdown: [benchmark_full_20260617_063715.md](/home/danielaston/Desktop/Workspace/FPT/SWD392/travel-planner-sallma/benchmarks/results/benchmark_full_20260617_063715.md)
-- Academic write-up: [BENCHMARK_ANALYSIS.md](/home/danielaston/Desktop/Workspace/FPT/SWD392/travel-planner-sallma/docs/BENCHMARK_ANALYSIS.md)
+- JSON: [benchmark_full_20260617_063715.json](benchmarks/results/benchmark_full_20260617_063715.json)
+- Markdown: [benchmark_full_20260617_063715.md](benchmarks/results/benchmark_full_20260617_063715.md)
+- Academic write-up: [BENCHMARK_ANALYSIS.md](docs/BENCHMARK_ANALYSIS.md)
 
 Thiết lập chạy:
 - `30` create prompts
@@ -28,36 +28,36 @@ Thiết lập chạy:
 
 | Criterion | Single-Agent | Multi-Agent | How the number is produced |
 |---|---:|---:|---|
-| Correctness | `43.73%` verified rate | `99.39%` verified rate | Với mỗi output, benchmark trích xuất tên khách sạn, nhà hàng, điểm tham quan rồi fuzzy-match với bảng `places` trong PostgreSQL. `verified_rate = verified_places / total_places`. |
-| Hallucination | `56.27%` | `0.61%` | `hallucination_rate = 1 - verified_rate`, tức tỷ lệ địa điểm không đối chiếu được với knowledge base đã xác thực. |
-| Budget accuracy | `531,333 VND` average delta | `0 VND` average delta | Benchmark lấy `budget.total_cost` do hệ thống trả về rồi tính lại tổng chi phí một cách deterministic từ `hotel.price_per_night * nights + sum(activity.price)`. Sai số tuyệt đối là `budget_delta`. |
-| Consistency (create cases) | `0.2` violations/case | `4.1` violations/case | Rule-based consistency checker đếm số mâu thuẫn như `nights_mismatch`, `time_order`, `missing_coordinates`, `duplicate_activity`, `route_distance`. Giá trị là số lỗi trung bình trên mỗi create case. |
-| State retention | `100%` pass rate | `100%` pass rate | Mỗi session 10 turns được kiểm tra khả năng giữ hotel, itinerary days, budget và các thay đổi refine. `pass_rate = passed_checks / total_checks`. |
-| Consistency (10-turn sessions) | `0.5` violations/session | `6.0` violations/session | Sau khi hoàn tất session nhiều lượt, benchmark chạy lại bộ kiểm tra consistency trên state cuối cùng để đo mâu thuẫn tích lũy trong hội thoại dài. |
-| Latency - Create | `19.814s` | `85.533s` | Trung bình end-to-end của workflow `create` trong latency suite, chạy `10` samples dưới `5` concurrent simulated rooms. |
-| Latency - Refine | `18.628s` | `50.770s` | Trung bình end-to-end của workflow `refine` trong latency suite, cũng với `10` samples và `5` concurrent simulated rooms. |
-| Latency - Budget | `19.572s` | `0.000s` | Single-agent phải dùng LLM để suy ra tổng chi phí, còn multi-agent dùng `Budget Node` Python thuần nên thời gian gần như bằng 0. |
-| User-perceived usefulness (proxy) | `4.17/5` | `3.79/5` | Đây là automated proxy, không phải bảng hỏi thật. Điểm được suy ra từ `clarity`, `trustworthiness`, `collaboration`, trong đó trustworthiness tăng khi verified rate cao và budget delta thấp. |
+| Correctness | `43.73%` verified rate | `99.39%` verified rate | Kết quả này là **macro-average trên 30 cases**. Single-agent có `109` địa điểm verified trên `249` địa điểm sinh ra tổng cộng; multi-agent có `418/420`. Tuy nhiên số công bố `43.73%` và `99.39%` được tính theo `mean(case_verified_rate)` chứ không phải gộp toàn bộ địa điểm rồi chia một lần. |
+| Hallucination | `56.27%` | `0.61%` | Cũng là **macro-average trên 30 cases** với công thức `hallucination_rate = 1 - verified_rate`. Tính theo tổng raw counts thì single-agent có `140/249` địa điểm không verify được, còn multi-agent là `2/420`. |
+| Budget accuracy | `531,333 VND` average delta | `0 VND` average delta | Benchmark tính `budget_delta = abs(claimed_total_cost - recomputed_total_cost)` cho từng case, rồi lấy trung bình trên `30` cases. Tổng sai số raw của single-agent là `15,940,000 VND`, chia `30` ra `531,333 VND`; multi-agent có tổng sai số `0 VND`. |
+| Consistency (create cases) | `0.2` violations/case | `4.1` violations/case | Bộ kiểm tra consistency đếm các lỗi như `nights_mismatch`, `time_order`, `missing_coordinates`, `duplicate_activity`, `route_distance`. Single-agent có tổng `6` violations trên `30` create cases nên trung bình `0.2`; multi-agent có `123/30 = 4.1`. |
+| State retention | `100%` pass rate | `100%` pass rate | Có `2` session, mỗi session có `5` checks, nên tổng là `10/10` checks passed cho cả hai hệ. Công thức là `state_retention_pass_rate = passed_checks / total_checks`. |
+| Consistency (10-turn sessions) | `0.5` violations/session | `6.0` violations/session | Sau khi hoàn tất `2` session nhiều lượt, benchmark chạy lại consistency checker trên state cuối cùng. Single-agent có tổng `1` violation trên `2` session nên ra `0.5`; multi-agent có `12/2 = 6.0`. |
+| Latency - Create | `19.814s` | `85.533s` | Đây là trung bình của `10` samples trong latency suite dưới `5` concurrent simulated rooms. Tổng thời gian cộng dồn xấp xỉ là `198.14s` cho single-agent và `855.33s` cho multi-agent. |
+| Latency - Refine | `18.628s` | `50.770s` | Trung bình của `10` samples. Tổng thời gian cộng dồn xấp xỉ là `186.28s` cho single-agent và `507.70s` cho multi-agent. |
+| Latency - Budget | `19.572s` | `0.000s` | Trung bình của `10` samples. Tổng thời gian cộng dồn xấp xỉ là `195.72s` cho single-agent; multi-agent dùng `Budget Node` Python thuần nên gần như `0s` trên mọi sample. |
+| User-perceived usefulness (proxy) | `4.17/5` | `3.79/5` | Đây là **automated proxy**, không phải questionnaire thật. Single-agent có tổng điểm raw `125.05` trên `30` cases nên trung bình `4.17`; multi-agent có `113.59/30 = 3.79`. |
 
 ### Diễn giải theo 6 tiêu chí đánh giá
 
 1. **Correctness**
-   Benchmark đã phủ tiêu chí này trực tiếp. Con số `43.73%` và `99.39%` là tỷ lệ địa điểm được đối chiếu thành công với knowledge base thật trong database, thay vì do LLM tự sinh không có grounding.
+   Benchmark đã phủ tiêu chí này trực tiếp. Con số `43.73%` và `99.39%` là **trung bình theo từng case** của tỷ lệ địa điểm được đối chiếu thành công với knowledge base thật trong database. Raw counts tương ứng là `109/249` địa điểm cho single-agent và `418/420` cho multi-agent.
 
 2. **Budget accuracy**
-   Benchmark đã phủ trực tiếp. Single-agent lệch trung bình `531,333 VND`, còn multi-agent lệch `0 VND` vì tổng chi phí cuối được tính bởi `Budget Node` deterministic thay vì để LLM tự cộng.
+   Benchmark đã phủ trực tiếp. Single-agent có tổng sai số `15,940,000 VND` trên `30` cases nên lệch trung bình `531,333 VND`, còn multi-agent lệch `0 VND` vì tổng chi phí cuối được tính bởi `Budget Node` deterministic thay vì để LLM tự cộng.
 
 3. **Consistency**
-   Benchmark đã phủ bằng một bộ luật kiểm tra tự động. Bộ đo hiện tại xem contradiction là các lỗi cấu trúc và logic giữa itinerary, route, hotel và budget metadata, ví dụ số đêm không khớp số ngày hoặc activity quá xa hotel.
+   Benchmark đã phủ bằng một bộ luật kiểm tra tự động. Bộ đo hiện tại xem contradiction là các lỗi cấu trúc và logic giữa itinerary, route, hotel và budget metadata, ví dụ số đêm không khớp số ngày hoặc activity quá xa hotel. Ở create benchmark, raw totals là `6` violations cho single-agent và `123` cho multi-agent.
 
 4. **State retention**
-   Benchmark đã phủ bằng `2` hội thoại nhiều lượt, mỗi hội thoại `10` turns. Cả hai hệ đều đạt `100%` pass rate trong bộ kiểm tra giữ trạng thái.
+   Benchmark đã phủ bằng `2` hội thoại nhiều lượt, mỗi hội thoại `10` turns. Cả hai hệ đều đạt `10/10` checks passed, tương đương `100%` pass rate trong bộ kiểm tra giữ trạng thái.
 
 5. **Latency**
-   Benchmark đã phủ trực tiếp bằng latency suite chạy đồng thời `5` group rooms mô phỏng, tách riêng `Create`, `Refine`, `Budget`. Kết quả cho thấy multi-agent đúng hơn nhưng chậm hơn đáng kể ở hai workflow có LLM orchestration.
+   Benchmark đã phủ trực tiếp bằng latency suite chạy đồng thời `5` group rooms mô phỏng, tách riêng `Create`, `Refine`, `Budget`. Mỗi workflow có `10` samples. Kết quả cho thấy multi-agent đúng hơn nhưng chậm hơn đáng kể ở hai workflow có LLM orchestration.
 
 6. **User-perceived usefulness**
-   Benchmark mới chỉ phủ một phần. Giá trị `4.17/5` và `3.79/5` hiện là **proxy tự động**, chưa phải questionnaire Likert thật từ người dùng. Nếu cần đúng tuyệt đối với tiêu chí nghiên cứu, cần bổ sung khảo sát người dùng sau tác vụ.
+   Benchmark mới chỉ phủ một phần. Giá trị `4.17/5` và `3.79/5` hiện là **proxy tự động**, với raw totals lần lượt là `125.05/30` và `113.59/30`, chưa phải questionnaire Likert thật từ người dùng. Nếu cần đúng tuyệt đối với tiêu chí nghiên cứu, cần bổ sung khảo sát người dùng sau tác vụ.
 
 ### Kết luận ngắn
 - Multi-agent vượt trội rất rõ ở `Correctness`, `Hallucination control` và `Budget accuracy`.

@@ -1,8 +1,8 @@
 # Benchmark Methodology and Results
 
 This document summarizes the full benchmark run exported at:
-- JSON: [benchmark_full_20260617_063715.json](/home/danielaston/Desktop/Workspace/FPT/SWD392/travel-planner-sallma/benchmarks/results/benchmark_full_20260617_063715.json)
-- Markdown: [benchmark_full_20260617_063715.md](/home/danielaston/Desktop/Workspace/FPT/SWD392/travel-planner-sallma/benchmarks/results/benchmark_full_20260617_063715.md)
+- JSON: [benchmark_full_20260617_063715.json](../benchmarks/results/benchmark_full_20260617_063715.json)
+- Markdown: [benchmark_full_20260617_063715.md](../benchmarks/results/benchmark_full_20260617_063715.md)
 
 ## 1. Experimental Setup
 
@@ -29,6 +29,13 @@ hallucination_rate = 1 - verified_rate
 
 This metric directly measures grounding quality and is the closest automated implementation of the proposal's "retrieved from verified knowledge base" criterion.
 
+Raw benchmark totals for the reported run:
+
+- Single-agent: `109` verified places out of `249` generated places across `30` create cases
+- Multi-agent: `418` verified places out of `420` generated places across `30` create cases
+
+Important note: the published values `43.73%` and `99.39%` are **macro-averages across cases**, computed as the mean of the 30 per-case verified rates. They are not the same as the one-shot pooled ratios `109/249` and `418/420`.
+
 ### 2.2 Budget Accuracy
 Budget accuracy is defined as the absolute difference between the budget claimed in the generated response and a deterministic recomputation of the total trip cost.
 
@@ -46,6 +53,17 @@ hotel.price_per_night * hotel.nights + sum(activity.price)
 
 For the multi-agent system, the final budget comes from the dedicated Budget Node, while the single-agent baseline relies on the LLM's own arithmetic.
 
+Raw benchmark totals for the reported run:
+
+- Single-agent total absolute budget error across `30` create cases: `15,940,000 VND`
+- Multi-agent total absolute budget error across `30` create cases: `0 VND`
+
+The published `531,333 VND` is therefore:
+
+```text
+15,940,000 / 30 = 531,333.33 VND
+```
+
 ### 2.3 Consistency
 Consistency is implemented as a rule-based contradiction counter. The checker inspects the final itinerary and hotel metadata for structural inconsistencies, including:
 
@@ -56,6 +74,15 @@ Consistency is implemented as a rule-based contradiction counter. The checker in
 - activities placed too far from the selected hotel
 
 The reported value is the average number of detected violations per case or per final multi-turn session.
+
+Raw benchmark totals for the reported run:
+
+- Create benchmark:
+  - Single-agent: `6` total violations across `30` cases -> `6 / 30 = 0.2`
+  - Multi-agent: `123` total violations across `30` cases -> `123 / 30 = 4.1`
+- Multi-turn final session states:
+  - Single-agent: `1` total violation across `2` sessions -> `1 / 2 = 0.5`
+  - Multi-agent: `12` total violations across `2` sessions -> `12 / 2 = 6.0`
 
 ### 2.4 State Retention
 State retention is evaluated through 10-turn sessions that repeatedly refine an existing itinerary. The benchmark verifies whether the final state preserves key constraints and accumulated changes, including:
@@ -72,10 +99,27 @@ Formula:
 state_retention_pass_rate = passed_checks / total_checks
 ```
 
+Raw benchmark totals for the reported run:
+
+- Single-agent: `10 / 10` checks passed across `2` sessions
+- Multi-agent: `10 / 10` checks passed across `2` sessions
+
 ### 2.5 Latency
 Latency is measured as end-to-end workflow time under concurrent load. The benchmark runs `Create`, `Refine`, and `Budget` workflows with `5` simulated concurrent group rooms and records the runtime for `10` samples per workflow.
 
 This metric reflects the practical user-facing delay of each architecture rather than isolated model inference time.
+
+Raw benchmark totals for the reported run:
+
+- Create latency:
+  - Single-agent: `10` samples, average `19.814s`, summed sample time approximately `198.14s`
+  - Multi-agent: `10` samples, average `85.533s`, summed sample time approximately `855.33s`
+- Refine latency:
+  - Single-agent: `10` samples, average `18.628s`, summed sample time approximately `186.28s`
+  - Multi-agent: `10` samples, average `50.770s`, summed sample time approximately `507.70s`
+- Budget latency:
+  - Single-agent: `10` samples, average `19.572s`, summed sample time approximately `195.72s`
+  - Multi-agent: `10` samples, average `0.000s`, summed sample time approximately `0.00s`
 
 ### 2.6 User-Perceived Usefulness
 The current implementation does not yet use a human questionnaire. Instead, it reports an automated proxy score derived from:
@@ -86,6 +130,11 @@ The current implementation does not yet use a human questionnaire. Instead, it r
 
 The proxy is computed from correctness, budget accuracy, and consistency signals, then mapped to a 1-5 scale. Therefore, this metric should be reported as a provisional approximation rather than a full questionnaire-based human evaluation.
 
+Raw benchmark totals for the reported run:
+
+- Single-agent: total proxy score `125.05` across `30` create cases -> `125.05 / 30 = 4.17`
+- Multi-agent: total proxy score `113.59` across `30` create cases -> `113.59 / 30 = 3.79`
+
 ## 3. Results Summary
 
 ### 3.1 Create Benchmark
@@ -94,28 +143,28 @@ The proxy is computed from correctness, budget accuracy, and consistency signals
 |---|---:|---:|
 | Cases | `30` | `30` |
 | Average latency per create case | `6.897s` | `26.985s` |
-| Verified place rate | `43.73%` | `99.39%` |
-| Hallucination rate | `56.27%` | `0.61%` |
-| Average budget delta | `531,333 VND` | `0 VND` |
-| Average consistency violations | `0.2` | `4.1` |
-| Usefulness proxy | `4.17/5` | `3.79/5` |
+| Verified place rate | `43.73%` from `109/249` raw verified places | `99.39%` from `418/420` raw verified places |
+| Hallucination rate | `56.27%` from `140/249` raw unverified places | `0.61%` from `2/420` raw unverified places |
+| Average budget delta | `531,333 VND` from `15,940,000 / 30` | `0 VND` from `0 / 30` |
+| Average consistency violations | `0.2` from `6 / 30` | `4.1` from `123 / 30` |
+| Usefulness proxy | `4.17/5` from `125.05 / 30` | `3.79/5` from `113.59 / 30` |
 
 ### 3.2 Multi-Turn State Retention
 
 | Metric | Single-Agent | Multi-Agent |
 |---|---:|---:|
 | Sessions | `2` | `2` |
-| State retention pass rate | `100%` | `100%` |
-| Average turn latency | `8.786s` | `25.786s` |
-| Average consistency violations in final session state | `0.5` | `6.0` |
+| State retention pass rate | `100%` from `10/10` checks | `100%` from `10/10` checks |
+| Average turn latency | `8.786s` from session means `[8.862, 8.709]` | `25.786s` from session means `[27.363, 24.208]` |
+| Average consistency violations in final session state | `0.5` from `1 / 2` | `6.0` from `12 / 2` |
 
 ### 3.3 Workflow Latency Under Concurrent Load
 
 | Workflow | Single-Agent | Multi-Agent |
 |---|---:|---:|
-| Create | `19.814s` | `85.533s` |
-| Refine | `18.628s` | `50.770s` |
-| Budget | `19.572s` | `0.000s` |
+| Create | `19.814s` from `10` samples, total about `198.14s` | `85.533s` from `10` samples, total about `855.33s` |
+| Refine | `18.628s` from `10` samples, total about `186.28s` | `50.770s` from `10` samples, total about `507.70s` |
+| Budget | `19.572s` from `10` samples, total about `195.72s` | `0.000s` from `10` samples, total about `0.00s` |
 
 ## 4. Interpretation
 
